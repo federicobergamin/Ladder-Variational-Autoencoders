@@ -31,7 +31,7 @@ def show_image(img, title = "", path = None):
         plt.savefig(path)
     plt.show()
 
-# We use this custom BCE function until PyTorch implements reduce=False
+# We use this custom binary cross entropy
 def binary_cross_entropy(r, x):
     return -torch.sum(x * torch.log(r + 1e-8) + (1 - x) * torch.log(1 - r + 1e-8), dim=-1)
 
@@ -49,7 +49,7 @@ BATCH_SIZE_TEST = 64
 HIDDEN_LAYERS = [512, 256, 128, 64, 32]
 Z_DIM = [64, 32, 16, 8, 4]
 
-N_EPOCHS = 100
+N_EPOCHS = 1
 LEARNING_RATE = 0.001 #1e-3 #(PAPER ORIGINAL)
 WEIGHT_DECAY = -1
 N_WARM_UP = 15
@@ -131,48 +131,21 @@ for epoch in range(N_EPOCHS):
         n_batch += 1
         images, labels = data
         images = images.to(device)
-        # if len(images) != 128:
-        #     print(len(images))
 
         reconstruction, _ = model(images)
-        # print(conditional_reconstruction)
-        # print('images shape', images.shape)
-        # print('recon shape', conditional_reconstruction.shape)
 
         likelihood = -binary_cross_entropy(reconstruction, images)
-        # print('lik1', torch.sum(likelihood))
-        # likelihood2 = - F.binary_cross_entropy(reconstruction, images, reduction='sum')
-        # print('lik2', likelihood2)
-
-        # print('likel hsape', likelihood.shape)
-        # print(model.kl_d\ivergence.shape)
-        # print(model.kl_analytical.shape)
-
-        # elbo = likelihood - model.kl_divergence
-        # elbo = likelihood2 - next(beta) * torch.sum(model.kl_divergence)
         elbo = torch.sum(likelihood) - _beta * torch.sum(model.kl_divergence)
-
-        # print('Sampled kl', model.kl_divergence.shape)
-        # print('Anal kl', model.kl_analytical.shape)
-        # print('---')
         approx_kl.append(torch.sum(model.kl_divergence)/ len(images))
-        # anal_kl.append(-torch.mean(model.kl_analytical)/ len(train_loader.dataset))
 
 
         L = - elbo / len(images)
-        # L = -torch.mean(elbo)
-        # print(L)
-
         L.backward()
         optimizer.step()
         optimizer.zero_grad()
-        # if L.item()/len(images) > 4:
-        #     print('Epoch: {}, Batch: {}, images in the batch: {}, L.item: {}'.format(epoch, i, len(images), L.item()))
         training_loss.append(elbo/len(images))
         tmp_elbo += L.item() * len(images)
         tmp_recon += torch.sum(likelihood)
-        # tmp_recon += likelihood2
-        # tmp_kl += -model.kl_analytical
         tmp_kl += torch.sum(model.kl_divergence)
 
         ## we have to add the kl per layer per batch
@@ -180,8 +153,7 @@ for epoch in range(N_EPOCHS):
         for i in range(N_LAYERS):
             kl_per_batch[i] += layers_kls[i]
 
-    ## at the end of each epoch we can try to store some images
-    ##
+    ## at the end of each epoch we can store some samples and reconstructions
     with torch.no_grad():
         for r, data in enumerate(test_loader, 0):
             images, labels = data
@@ -253,21 +225,8 @@ plt.legend()
 plt.show()
 
 
-# with torch.no_grad():
-#     for i, data in enumerate(test_loader, 0):
-#         images, labels = data
-#         images = images.to(device)
-#         reconstruction, _ = model(images)
-#         # print(conditional_reconstruction.shape)
-#         recon_image_ = reconstruction.view(reconstruction.shape[0], 1, 28, 28)
-#         images = images.view(images.shape[0], 1, 28, 28)
-#         if i % 100 == 0:
-#             show_images(images, 'original')
-#             show_images(recon_image_, 'conditional_reconstruction')
-
-
 ## at this point I want to take the test set and compute the latent code
-## for each example and then run PCA or TSNE and plot it ## TODO FIX PCA (14/08/2019)
+## for each example and then run PCA or TSNE and plot it
 model.eval()
 latent_representation = {'{}'.format(i+1) : [] for i in range(N_LAYERS)}
 all_labels = []
@@ -291,12 +250,12 @@ with torch.no_grad():
 
     for i in range(N_LAYERS):
         layer_latent_representation = np.array(latent_representation['{}'.format(i+1)])
-        print(layer_latent_representation.shape)
+        # print(layer_latent_representation.shape)
         pca = PCA(2)
         pca.fit(layer_latent_representation)
         feat = pca.fit_transform(layer_latent_representation)
         features_pca = np.array(feat)
-        print(features_pca.shape)
+        # print(features_pca.shape)
 
         colors = ['#0165fc', '#02ab2e', '#fdaa48', '#fffe7a', '#6a79f7', '#db4bda', '#0ffef9', '#bd6c48', '#fea993', '#1e9167']
 
@@ -337,17 +296,8 @@ with torch.no_grad():
             show_images(images, 'original', 'conditional_reconstruction/original_images_{}.png'.format(i))
             show_images(recon_image_, 'conditional_reconstruction', 'conditional_reconstruction/conditional_reconstruction_{}.png'.format(i))
 
-    ### we shoul
-    ## now we want also to try to sample from the decoder
-    ## RANDOM SAMLING
-    # Z IS RANDOM N(0,1)
-    # mus = torch.zeros((BATCH_SIZE,Z_DIM))
-    # stds = torch.zeros((BATCH_SIZE, Z_DIM))
-    # eps = torch.randn((BATCH_SIZE, Z_DIsM))
-    # random_z = mus.addcmul(stds, eps)
+    # we can randomly sample from the prior with the final model
     for i in range(5):
-        # random_latent = torch.randn((BATCH_SIZE, Z_DIM), dtype = torch.float).to(device)
-        # images_from_random = model.decoder(random_latent)
         images_from_random = model.sample(N_SAMPLE)
         sampled_ima = images_from_random.view(images_from_random.shape[0], 1, 28, 28)
         show_images(sampled_ima, 'Random sampled images', 'random_samples/samples_prova_{}.png'.format(i))

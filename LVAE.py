@@ -35,7 +35,7 @@ def log_standard_gaussian(x):
 def log_gaussian(x, mu, var):
     """
     Returns the log pdf of a normal distribution parametrised
-    by mu and var evaluated at x. (Univariate distribution)
+    by mu and var evaluated at x.
     :param x: point to evaluate
     :param mu: mean of distribution
     :param var: variance of distribution
@@ -47,19 +47,16 @@ def log_gaussian(x, mu, var):
 
 
 def reparametrization_trick(mu, var):
-    ## TODO: BE CAREFUL FROM NOW ON WE USE ONLY THE VARIANCE AS IN THE PAPER
     '''
     Function that given the mean (mu) and the logarithmic variance (log_var) compute
     the latent variables using the reparametrization trick.
         z = mu + sigma * noise, where the noise is sample
 
     :param mu: mean of the z_variables
-    :param log_var: variance of the latent variables
+    :param var: variance of the latent variables (as in the paper)
     :return: z = mu + sigma * noise
     '''
-    # we should get the std from the log_var
-    # log_std = 0.5 * log_var (use the logarithm properties)
-    # std = exp(log_std)
+    # compute the standard deviation from the variance
     std = torch.sqrt(var)
 
     # we have to sample the noise (we do not have to keep the gradient wrt the noise)
@@ -81,11 +78,9 @@ def merge_gaussian(mu1, var1, mu2, var2):
 
     # we have to transform the new var into log_var
     # new_log_var = torch.log(new_var + 1e-8)
-
-    # TODO: WE ARE WORKING WITH THE VARIANCE AND NOT THE LOG_VARIANCE NOW
     return new_mu, new_var
 
-# ## now we create our building block ### TODO: FIX THIS IN A WAY THAT WE CAN HAVE MLP WITH DIFFERENT LAYERS (14/08/2019)
+# ## now we create our building block ### TODO: FIX THIS IN A WAY THAT WE CAN HAVE MLP WITH DIFFERENT LAYERS
 # class EncoderMLPBlock(nn.Module):
 #     def __init__(self, input_dim, hidden_dims, z_dim):
 #         '''
@@ -219,7 +214,7 @@ class EncoderMLPBlock(nn.Module):
     def __init__(self, input_dim, hidden_dim, z_dim):
         '''
         This is a single block that takes x or d as input and return
-        the last hidden layer and mu and log_var
+        the last hidden layer and mu and _var
         (Substantially this is a small MLP as the encoder we in the original VAE)
 
         :param input_dim:
@@ -249,8 +244,8 @@ class DecoderMLPBlock(nn.Module):
     def __init__(self, z1_dim, hidden_dim, z2_dim):
         '''
         This is also substantially a MLP, it takes the z obtained from the
-        reparametrization trick and it computes the mu and log_var of the z of the layer
-        below, which, during the inference, has to be merged with the mu and log_var obtained
+        reparametrization trick and it computes the mu and var of the _z of the layer
+        below, which, during the inference, has to be merged with the mu and _var obtained
         by at the EncoderMLPBlock at the same level.
 
         :param z1_dim:
@@ -261,7 +256,7 @@ class DecoderMLPBlock(nn.Module):
 
         self.hidden_layer =nn.Linear(z1_dim, hidden_dim)
         self.batchnorm = nn.BatchNorm1d(hidden_dim)
-        ## we have two output: mu and log(sigma^2)
+        ## we have two output: mu and # sigma^2
         self.mu = nn.Linear(hidden_dim, z2_dim)
         self._var = nn.Linear(hidden_dim, z2_dim)
 
@@ -413,7 +408,6 @@ class LadderVariationalAutoencoder(nn.Module):
             mu_d, var_d = mu_and_var_from_layers[i]
 
             if i == 0:
-                # print(decoder)
                 # we are at the top, we have to compute the kl
                 # self.kl_divergence += self._approximate_kl(z, (mu_d, var_d))
                 layer_kl = self._approximate_kl(z, (mu_d, var_d))
@@ -424,7 +418,6 @@ class LadderVariationalAutoencoder(nn.Module):
                 self.kl_divergence_per_layer.append(torch.sum(layer_kl))
 
             else:
-                # print(decoder)
                 # otherwise we have to pass the z through the decoder
                 # get the mu and var and merge them with the one we get in the previous step
                 mu_t, var_t = decoder(z)
