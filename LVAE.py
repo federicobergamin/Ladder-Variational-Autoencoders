@@ -159,7 +159,7 @@ def merge_gaussian(mu1, var1, mu2, var2):
 #             batchnorms_layer.append(nn.BatchNorm1d(hidden_dims[i]))
 #
 #         self.batchnorms = nn.ModuleList(batchnorms_layer)
-#         ## we have two output: mu and log(sigma^2) #TODO: we can create a specific gaussian layer
+#         ## we have two output: mu and log(sigma^2)
 #         self.mu = nn.Linear(hidden_dims[-1], z2_dim[0])
 #         self._var = nn.Linear(hidden_dims[-1], z2_dim[0])
 #
@@ -196,16 +196,16 @@ def merge_gaussian(mu1, var1, mu2, var2):
 #         # neurons = [z_final, *hidden_dims]
 #         ## common part of the architecture
 #         self.hidden_layers = nn.ModuleList([nn.Linear(neurons[i - 1], neurons[i]) for i in range(1, len(neurons))])
-#         # conditional_reconstruction layer
-#         self.conditional_reconstruction = nn.Linear(hidden_dims[-1], input_dim)
+#         # test_set_reconstruction layer
+#         self.test_set_reconstruction = nn.Linear(hidden_dims[-1], input_dim)
 #         self.output_activation = nn.Sigmoid()
 #
 #     def forward(self, z):
 #
 #         for layer in self.hidden_layers:
 #             z = F.relu(layer(z))
-#         # print(self.conditional_reconstruction(x).shape)
-#         return self.output_activation(self.conditional_reconstruction(z))
+#         # print(self.test_set_reconstruction(x).shape)
+#         return self.output_activation(self.test_set_reconstruction(z))
 
 
 ## the simplest way is to assume that each block has only 1 hidden dimension
@@ -287,14 +287,14 @@ class FinalDecoder(nn.Module):
         # neurons = [z_final, *hidden_dims]
         ## common part of the architecture
         self.hidden_layer = nn.Linear(z_final, hidden_dim)
-        # conditional_reconstruction layer
+        # test_set_reconstruction layer
         self.reconstruction = nn.Linear(hidden_dim, input_dim)
         self.output_activation = nn.Sigmoid()
 
     def forward(self, z):
 
         z = F.relu(self.hidden_layer(z))
-        # print(self.conditional_reconstruction(x).shape)
+        # print(self.test_set_reconstruction(x).shape)
         return self.output_activation(self.reconstruction(z))
 
 
@@ -316,7 +316,7 @@ class LadderVariationalAutoencoder(nn.Module):
         # print('z_dims:', z_dims)
         self.n_layers = len(z_dims)
 
-        ## todo: we should use the n_layers here if you wnat to allow the MLP to have more hidden layers
+        ## todo: we should use the n_layers here if you waNt to allow the MLP to have more hidden layers
         neurons = [input_dim, *hidden_dims]
         # print(neurons)
         encoder_layers = [EncoderMLPBlock(neurons[i-1], neurons[i], z_dims[i-1]) for i in range(1, len(neurons))]
@@ -436,7 +436,7 @@ class LadderVariationalAutoencoder(nn.Module):
                 self.kl_divergence_per_layer.append(torch.sum(layer_kl))
 
 
-        # at the end of the cycle we have the z before the conditional_reconstruction
+        # at the end of the cycle we have the z before the test_set_reconstruction
         pixels_mean = self.reconstruction(z)
 
         return pixels_mean, latents

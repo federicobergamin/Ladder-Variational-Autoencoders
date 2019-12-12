@@ -17,7 +17,7 @@ import torch.nn.functional as F
 from torchvision import datasets, transforms, utils
 from torch.autograd import Variable
 from LADDER_VAE.LVAE import LadderVariationalAutoencoder
-from LADDER_VAE.utils import DeterministicWarmup
+from LADDER_VAE.deterministic_warmup import DeterministicWarmup
 from sklearn.decomposition import PCA
 
 import matplotlib.pyplot as plt
