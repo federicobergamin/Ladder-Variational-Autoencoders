@@ -19,6 +19,7 @@ from torch.autograd import Variable
 from LADDER_VAE.LVAE import LadderVariationalAutoencoder
 from LADDER_VAE.deterministic_warmup import DeterministicWarmup
 from sklearn.decomposition import PCA
+from LADDER_VAE.utils.code_to_load_the_dataset import load_MNIST_dataset
 
 import matplotlib.pyplot as plt
 
@@ -44,43 +45,31 @@ BATCH_SIZE_TEST = 64
 HIDDEN_LAYERS = [512, 256, 128, 64, 32]
 Z_DIM = [64, 32, 16, 8, 4]
 
+ORIGINAL_BINARIZED_MNIST = True
+ESTIMATION_SAMPLES = 100
 
-ESTIMATION_SAMPLES = 10
-
-PATH = 'saved_models/nlayer_5_epoch_98_elbo_91.5039183959961_learnrate_0.001'
+PATH = 'saved_models/nlayer_5_epoch_200_elbo_-88.86703556152344_learnrate_0.001'
 
 ## we have the binarized MNIST
 ## in this case we look at the test set, since we are interested in these examples that
 ## were not used to train the model
-test_set = datasets.MNIST('../MNIST_dataset', train=False, download=True,
-                   transform=transforms.ToTensor())
-print('Number of examples in the training set:', len(test_set))
-print('Size of the image:', test_set[0][0].shape)
-## we plot an example only to check it
-idx_ex = 1000
-x, y = test_set[idx_ex] # x is now a torch.Tensor
-plt.imshow(x.numpy()[0], cmap='gray')
-plt.title('Example n {}, label: {}'.format(idx_ex, y))
-plt.show()
+if ORIGINAL_BINARIZED_MNIST:
+    ## we load the original dataset by Larochelle
+    train_loader, val_loader, test_loader = load_MNIST_dataset('Original_MNIST_binarized/', BATCH_SIZE, True, True,
+                                                               True)
+else:
+    # we have the binarized MNIST
+    ## TRAIN SET
 
-### we only check if it is binarized
-input_dim = x.numpy().size
-print('Size of the image:', input_dim)
+    flatten_bernoulli = lambda x: transforms.ToTensor()(x).view(-1).bernoulli()
 
-flatten_bernoulli = lambda x: transforms.ToTensor()(x).view(-1).bernoulli()
-
-## TEST SET
-test_loader = torch.utils.data.DataLoader(
-    datasets.MNIST('../MNIST_dataset', train=False, transform=flatten_bernoulli),
-batch_size=BATCH_SIZE, shuffle=True)
-
-dataiter = iter(test_loader)
-images, labels = dataiter.next() ## next return a complete batch --> BATCH_SIZE images
-show_images(images.view(BATCH_SIZE,1,28,28))
-
+    ## TEST SET
+    test_loader = torch.utils.data.DataLoader(
+        datasets.MNIST('../MNIST_dataset', train=False, transform=flatten_bernoulli),
+    batch_size=BATCH_SIZE, shuffle=True)
 
 ## we can create our model and try to train it
-model = LadderVariationalAutoencoder(input_dim, HIDDEN_LAYERS, Z_DIM)
+model = LadderVariationalAutoencoder(28*28, HIDDEN_LAYERS, Z_DIM)
 print('Model overview and recap\n')
 print(model)
 print('\n')
@@ -94,7 +83,10 @@ model.eval()
 
 with torch.no_grad():
     for i, data in enumerate(test_loader, 0):
-        images, _ = data
+        if ORIGINAL_BINARIZED_MNIST:
+            images = data
+        else:
+            images, labels = data
         images = images.to(device)
 
         batch_log_likelihood = torch.zeros((len(images), ESTIMATION_SAMPLES))
