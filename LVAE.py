@@ -39,7 +39,7 @@ def log_gaussian(x, mu, var):
     :param x: point to evaluate
     :param mu: mean of distribution
     :param var: variance of distribution
-    :return: log N(x|µ,σ)
+    :return: log N(x|mu,var)
     """
     log_pdf = - 0.5 * math.log(2 * math.pi) - torch.log(var + 1e-8) / 2 - (x - mu)**2 / (2 * var + 1e-8)
     # print('Size log_pdf:', log_pdf.shape)
