@@ -1,7 +1,7 @@
 ## Ladder Variational Autoencoders
 
 Personal implementation of the paper *"Ladder variational autoencoders" by Sønderby, C. K., Raiko, T., Maaløe, L., Sønderby, 
-S. K., & Winther, O. (2016)*. 
+S. K., & Winther, O. (2016)* (LVAE) in PyTorch. 
 The main purpose of this repository is to make the paper implementation accessible and clear to people
 that just started getting into Variational Autoencoders without having to look into highly optimized and difficult to 
 search libraries.

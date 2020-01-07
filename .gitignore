@@ -9,3 +9,4 @@ runs/
 samples_during_training/
 saved_models/
 test_set_reconstruction/
+tmp_file_log_var.py
